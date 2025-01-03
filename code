@@ -1,0 +1,53 @@
+function YoutubeScraper() {
+  var spreadSheet = SpreadsheetApp.getActiveSpreadsheet();
+  if (spreadSheet === null) {
+    Logger.log("No active spreadsheet found");
+    return;
+  }
+  var activeSheet = spreadSheet.getActiveSheet();
+
+  var search = YouTube.Search.list("snippet, id", {q: "Steak", maxResults: 50});
+
+  var videoIds = [];
+  var maxCharPerCell = 5000;
+
+  var results = search.items.map((item) => {
+    videoIds.push(item.id.videoId);
+
+    var videoLink = "https://www.youtube.com/watch?v=" + item.id.videoId;
+
+    var fullDescription = item.snippet.description;
+    var splitDescription = fullDescription.substring(0, maxCharPerCell);
+
+    return [videoLink, splitDescription];
+  });
+
+  if (results.length === 0) {
+    Logger.log("No valid results found");
+    return;
+  }
+
+  // Write data for columns B and C
+  activeSheet.getRange(2, 2, results.length, 2).setValues(results);
+
+  var videoTitles = search.items.map(item => [item.snippet.title]); // Separate array for titles
+
+  // Write data for column A
+  activeSheet.getRange(2, 1, videoTitles.length, 1).setValues(videoTitles);
+
+  var stats = YouTube.Videos.list("statistics", {id: videoIds.join(",")});
+
+  var videoStats = videoIds.map(videoId => {
+    var statItem = stats.items.find(item => item.id === videoId);
+    var viewCount = statItem && statItem.statistics.viewCount ? statItem.statistics.viewCount : 'No Data';
+    var likeCount = statItem && statItem.statistics.likeCount ? statItem.statistics.likeCount : 'No Data';
+
+    return [viewCount, likeCount];
+  });
+
+  Logger.log('Results: ', results);
+  Logger.log('Video Stats: ', videoStats);
+
+  // Write data for columns D and E
+  activeSheet.getRange(2, 4, videoStats.length, 2).setValues(videoStats);
+}
